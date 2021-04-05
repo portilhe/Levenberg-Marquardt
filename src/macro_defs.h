@@ -26,10 +26,10 @@
 //  version 2.6. A copy of the original copyright notice follows.
 
 //  ORIGINAL COPYRIGHT NOTICE:
-
-	/////////////////////////////////////////////////////////////////////////////////
+	/* 
+	////////////////////////////////////////////////////////////////////////////////////
 	// 
-	//  Levenberg - Marquardt non-linear minimization algorithm
+	//  Prototypes and definitions for the Levenberg - Marquardt minimization algorithm
 	//  Copyright (C) 2004  Manolis Lourakis (lourakis at ics forth gr)
 	//  Institute of Computer Science, Foundation for Research & Technology - Hellas
 	//  Heraklion, Crete, Greece.
@@ -44,31 +44,42 @@
 	//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	//  GNU General Public License for more details.
 	//
-	/////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////
+	*/
 
-#ifndef _COMPILER_H_
-#define _COMPILER_H_
+#ifndef _MACRO_DEFS_H_
+#define _MACRO_DEFS_H_
 
-/* note: intel's icc defines both __ICC & __INTEL_COMPILER.
- * Also, some compilers other than gcc define __GNUC__,
- * therefore gcc should be checked last
- */
-#if !defined(_MSC_VER) && !defined(__ICC) && !defined(__INTEL_COMPILER) && !defined(__GNUC__)
-#define inline // other than MSVC, ICC, GCC: define empty
-#endif
+#include "config_lmpp.h"
 
-#ifdef _MSC_VER
-#define LMPP_FINITE isfinite // MSVC
-#elif defined(__ICC) || defined(__INTEL_COMPILER) || defined(__GNUC__)
-#define LMPP_FINITE finite // ICC, GCC
+#define LCAT_(a, b)    #a b
+#define LCAT(a, b)    LCAT_(a, b) // force substitution
+#define RCAT_(a, b)    a #b
+#define RCAT(a, b)    RCAT_(a, b) // force substitution
+
+#define LMPP_MK_SLAPACK_NAME(n)  LMPP_S_PREFIX(LMPP_CAT_(n, LMPP_LAPACK_SUFFIX))
+#define LMPP_MK_DLAPACK_NAME(n)  LMPP_D_PREFIX(LMPP_CAT_(n, LMPP_LAPACK_SUFFIX))
+
+#ifdef LMPP_BLAS_PREFIX
+#define LMPP_MK_SBLAS_NAME(n) LMPP_CAT_(LMPP_BLAS_PREFIX, LMPP_S_PREFIX(LMPP_CAT_(n, LMPP_BLAS_SUFFIX)))
+#define LMPP_MK_DBLAS_NAME(n) LMPP_CAT_(LMPP_BLAS_PREFIX, LMPP_D_PREFIX(LMPP_CAT_(n, LMPP_BLAS_SUFFIX)))
 #else
-#define LMPP_FINITE finite // other than MSVC, ICC, GCC, let's hope this will work
+#define LMPP_MK_SBLAS_NAME(n) LMPP_S_PREFIX(LMPP_CAT_(n, LMPP_BLAS_SUFFIX))
+#define LMPP_MK_DBLAS_NAME(n) LMPP_D_PREFIX(LMPP_CAT_(n, LMPP_BLAS_SUFFIX))
 #endif
 
-#if defined(_MSC_VER) || defined(__ICC) || defined(__INTEL_COMPILER) || defined(__GNUC__)
-#define LMPP_ISINF(x) isinf(x) // MSVC, ICC, GCC
-#else
-#define LMPP_ISINF(x) isinf(x) // other than MSVC, ICC, GCC, let's hope this will work
-#endif
 
-#endif /* _COMPILER_H_ */
+#define __BLOCKSZ__       64 /* block size for cache-friendly matrix-matrix multiply. It should be
+							  * such that __BLOCKSZ__^2*sizeof(LMPP_REAL) is smaller than the CPU (L1)
+							  * data cache size. Notice that a value of 64 when LMPP_REAL=double assumes
+							  * an 32Kb L1 data cache (64*64*8=32K).
+							  */
+#define __BLOCKSZ__SQ    (__BLOCKSZ__)*(__BLOCKSZ__)
+
+/* add a prefix in front of a token */
+#define LMPP_CAT__(a, b) a ## b
+#define LMPP_CAT_(a, b) LMPP_CAT__(a, b) // force substitution
+#define LMPP_S_PREFIX(n) LMPP_CAT_(s, n)
+#define LMPP_D_PREFIX(n) LMPP_CAT_(d, n)
+
+#endif // _MACRO_DEFS_H_
