@@ -1,0 +1,18 @@
+Results for Wood's function:
+Levenberg-Marquardt returned 113
+
+Solution   p    = 1 1 1 1 
+Func value f(p) = 0 0 0 0 0 0 
+
+Minimization info:
+Initial ||e||_2       : 19192
+Final   ||e||_2       : 2.73228e-24
+Final   ||J^T e||_inf : 5.26988e-10
+Final   ||Dp||_2      : 1.44713e-18
+Final   mu/max[J^T J] : 6.85069e-07
+# iterations          : 113
+reason 6              : small ||e||_2
+# function evaluations: 158
+# Jacobian evaluations: 11
+# lin systems solved  : 113
+

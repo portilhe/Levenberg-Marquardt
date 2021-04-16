@@ -26,10 +26,10 @@
 //  version 2.6. A copy of the original copyright notice follows.
 
 //  ORIGINAL COPYRIGHT NOTICE:
-
-	/////////////////////////////////////////////////////////////////////////////////
+	/* 
+	////////////////////////////////////////////////////////////////////////////////////
 	// 
-	//  Levenberg - Marquardt non-linear minimization algorithm
+	//  Prototypes and definitions for the Levenberg - Marquardt minimization algorithm
 	//  Copyright (C) 2004  Manolis Lourakis (lourakis at ics forth gr)
 	//  Institute of Computer Science, Foundation for Research & Technology - Hellas
 	//  Heraklion, Crete, Greece.
@@ -44,82 +44,40 @@
 	//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	//  GNU General Public License for more details.
 	//
-	/////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////
+	*/
 
-#ifndef _MISC_H_
-#define _MISC_H_
+#ifndef _AX_EQ_B_H_
+#define _AX_EQ_B_H_
 
-template<typename FLOATTYPE>
-using FPTR = void (*)( FLOATTYPE* p, FLOATTYPE* hx, int m, int n, void* adata );
+#include <vector>
+#include "config_lmpp.h"
 
-/* blocking-based matrix multiply */
-template<typename FLOATTYPE>
-void levmar_trans_mat_mat_mult( FLOATTYPE* a, FLOATTYPE* b, int n, int m );
-
-/* forward finite differences */
-template<typename FLOATTYPE>
-void levmar_fdif_forw_jac_approx( FPTR<FLOATTYPE> func,
-								  FLOATTYPE*      p,
-								  FLOATTYPE*      hx,
-								  FLOATTYPE*      hxx,
-								  FLOATTYPE       delta,
-								  FLOATTYPE*      jac,
-								  int             m,
-								  int             n,
-								  void*           adata );
-
-/* central finite differences */
-template<typename FLOATTYPE>
-void levmar_fdif_cent_jac_approx( FPTR<FLOATTYPE> func,
-								  FLOATTYPE*      p,
-								  FLOATTYPE*      hxm,
-								  FLOATTYPE*      hxp,
-								  FLOATTYPE       delta,
-								  FLOATTYPE*      jac,
-								  int             m,
-								  int             n,
-								  void*           adata );
-
-/* e=x-y and ||e|| */
-template<typename FLOATTYPE>
-FLOATTYPE levmar_L2nrmxmy( FLOATTYPE* e, const FLOATTYPE* x, FLOATTYPE* y, int n );
-
-/* covariance of LS fit */
-template<typename FLOATTYPE>
-int levmar_covar( FLOATTYPE* JtJ, FLOATTYPE* C, FLOATTYPE sumsq, int m, int n );
-
-/* box constraints consistency check */
-template<typename FLOATTYPE>
-int levmar_box_check( FLOATTYPE* lb, FLOATTYPE* ub, int m );
-
-/* Cholesky */
-template<typename FLOATTYPE>
-int levmar_chol( FLOATTYPE* C, FLOATTYPE* W, int m );
-
-/* Jacobian verification */
-template<typename FLOATTYPE>
-void levmar_chkjac_impl( FPTR<FLOATTYPE> func,
-						 FPTR<FLOATTYPE> jacf,
-						 FLOATTYPE*      p,
-						 int             m,
-						 int             n,
-						 void*           adata,
-						 FLOATTYPE*      err );
+#ifdef LMPP_HAVE_LAPACK
 
 template<typename FLOATTYPE>
-constexpr FLOATTYPE zero()
-{ return FLOATTYPE(0.0); }
+int Ax_eq_b_QR( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m, std::vector<char>& buffer );
 
 template<typename FLOATTYPE>
-constexpr FLOATTYPE one()
-{ return FLOATTYPE(1.0); }
+int Ax_eq_b_QRLS( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m, int n, std::vector<char>& buffer );
 
 template<typename FLOATTYPE>
-constexpr FLOATTYPE two()
-{ return FLOATTYPE(2.0); }
+int Ax_eq_b_Chol( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m, std::vector<char>& buffer );
 
 template<typename FLOATTYPE>
-const FLOATTYPE sq( FLOATTYPE x )
-{ return x*x; }
+int Ax_eq_b_LU( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m, std::vector<char>& buffer );
 
-#endif /* _MISC_H_ */
+template<typename FLOATTYPE>
+int Ax_eq_b_SVD( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m, std::vector<char>& buffer );
+
+template<typename FLOATTYPE>
+int Ax_eq_b_BK( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m, std::vector<char>& buffer );
+
+#else // LMPP_HAVE_LAPACK -- No LAPACK !
+
+template<typename FLOATTYPE>
+int Ax_eq_b_LU_noLapack( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m, std::vector<char>& buffer )
+
+#endif
+
+#endif // _AX_EQ_B_H_

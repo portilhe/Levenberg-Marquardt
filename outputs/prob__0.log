@@ -1,0 +1,18 @@
+Results for Rosenbrock function:
+Levenberg-Marquardt returned 1000
+
+Solution   p    = 0.683949 0.461983 
+Func value f(p) = 0 0 
+
+Minimization info:
+Initial ||e||_2       : 1266.86
+Final   ||e||_2       : 0.0213931
+Final   ||J^T e||_inf : 0.00442491
+Final   ||Dp||_2      : 9.78299e-08
+Final   mu/max[J^T J] : 20916.2
+# iterations          : 1000
+reason 3              : itmax
+# function evaluations: 1195
+# Jacobian evaluations: 97
+# lin systems solved  : 1000
+

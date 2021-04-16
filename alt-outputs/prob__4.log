@@ -1,0 +1,35 @@
+gradient 0, err 1
+gradient 1, err 0.895567
+gradient 2, err 0.899788
+gradient 3, err 0.918952
+gradient 4, err 0.919454
+gradient 5, err 0.90202
+gradient 6, err 0.914791
+gradient 7, err 0.973857
+gradient 8, err 0.912299
+gradient 9, err 0.915939
+gradient 10, err 0.882938
+gradient 11, err 0.935349
+gradient 12, err 1
+gradient 13, err 0.944956
+gradient 14, err 0.909942
+gradient 15, err 0.922664
+
+Results for Meyer's (reformulated) problem:
+Levenberg-Marquardt returned 84
+
+Solution   p    = 2.48178 6.18135 3.50224 
+Func value f(p) = 34.78 28.61 23.65 19.63 16.37 13.72 11.54 9.744 8.261 7.03 6.005 5.147 4.427 3.82 3.307 2.872 
+
+Minimization info:
+Initial ||e||_2       : 1308.25
+Final   ||e||_2       : 8.79459e-05
+Final   ||J^T e||_inf : 5.93714e-12
+Final   ||Dp||_2      : 6.02389e-32
+Final   mu/max[J^T J] : 0.0277112
+# iterations          : 84
+reason 2              : small Dp
+# function evaluations: 95
+# Jacobian evaluations: 84
+# lin systems solved  : 95
+

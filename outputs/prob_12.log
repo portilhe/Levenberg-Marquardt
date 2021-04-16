@@ -1,0 +1,18 @@
+Results for Hock - Schittkowski modified problem #21:
+Levenberg-Marquardt returned 5
+
+Solution   p    = -5.16519e-12 -5.55798e-22 
+Func value f(p) = 0 0 
+
+Minimization info:
+Initial ||e||_2       : 1.01
+Final   ||e||_2       : 2.66792e-25
+Final   ||J^T e||_inf : 8.28992e-11
+Final   ||Dp||_2      : 6.86372e-17
+Final   mu/max[J^T J] : 2.07819e-06
+# iterations          : 5
+reason 6              : small ||e||_2
+# function evaluations: 6
+# Jacobian evaluations: 5
+# lin systems solved  : 5
+

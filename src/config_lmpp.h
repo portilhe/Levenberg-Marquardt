@@ -60,30 +60,14 @@
 /* specifies whether to use MKL or not. Using LAPACK is strongly recommended */
 #define LMPP_HAVE_MKL
 
-/* specifies whether the PLASMA parallel library for multicore CPUs is available */
-/* #undef HAVE_PLASMA */
-
-/* to avoid the overhead of repeated mallocs(), routines in Axb.c can be instructed to
-* retain working memory between calls. Such a choice, however, renders these routines
-* non-reentrant and is not safe in a shared memory multiprocessing environment.
-* Bellow, an attempt is made to issue a warning if this option is turned on and OpenMP
-* is being used (note that this will work only if omp.h is included before levmar.h)
-*/
-//#define LINSOLVERS_RETAIN_MEMORY
-#if (defined(_OPENMP))
-# ifdef LINSOLVERS_RETAIN_MEMORY
-#  ifdef _MSC_VER
-#  pragma message("LINSOLVERS_RETAIN_MEMORY is not safe in a multithreaded environment and should be turned off!")
-#  else
-#  warning LINSOLVERS_RETAIN_MEMORY is not safe in a multithreaded environment and should be turned off!
-#  endif /* _MSC_VER */
-# endif /* LINSOLVERS_RETAIN_MEMORY */
-#endif /* _OPENMP */
-
 /* specifies whether double precision routines will be compiled or not */
 #define LMPP_DBL_PREC
 /* specifies whether single precision routines will be compiled or not */
 #define LMPP_SNGL_PREC
+
+#if !defined(LMPP_DBL_PREC) && !defined(LMPP_SNGL_PREC)
+#define LMPP_DBL_PREC
+#endif
 
 /* common suffix for LAPACK subroutines. Define empty in case of no prefix. */
 //#define LMPP_LAPACK_SUFFIX _
@@ -133,12 +117,29 @@
 #define LMPP_BLEIC_DER_WORKSZ(npar, nmeas, nconstr1, nconstr2) LMPP_BLEC_DER_WORKSZ((npar)+(nconstr2), (nmeas)+(nconstr2), (nconstr1)+(nconstr2))
 #define LMPP_BLEIC_DIF_WORKSZ(npar, nmeas, nconstr1, nconstr2) LMPP_BLEC_DIF_WORKSZ((npar)+(nconstr2), (nmeas)+(nconstr2), (nconstr1)+(nconstr2))
 
-#define LMPP_OPTS_SZ      5 /* max(4, 5) */
-#define LMPP_INFO_SZ     10
-#define LMPP_ERROR       -1
+#define LMPP_OPTS_SZ         5 /* max(4, 5) */
+#define LMPP_INFO_SZ        10
+#define LMPP_ERROR          -1
 #define LMPP_INIT_MU     1E-03
 #define LMPP_STOP_THRESH 1E-17
 #define LMPP_DIFF_DELTA  1E-06
 #define LMPP_VERSION     "0.1 (April 2021)"
+
+
+#ifdef COMPILING_LEVMAR_LIB
+	#if _MSC_VER
+		#define LEVMAR_LIB_EXPORT __declspec(dllexport)
+	#elif defined(__GNUC__)
+		#define LEVMAR_LIB_EXPORT __attribute__((visibility("default")))
+	#else
+		#define LEVMAR_LIB_EXPORT
+	#endif // _MSV_VER
+#else // COMPILING_LEVMAR_LIB
+	#if _MSC_VER
+		#define LEVMAR_LIB_EXPORT __declspec(dllimport)
+	#else
+		#define LEVMAR_LIB_EXPORT
+	#endif // _MSV_VER
+#endif // COMPILING_LEVMAR_LIB
 
 #endif // _CONFIG_H_

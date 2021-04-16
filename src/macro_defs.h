@@ -52,11 +52,6 @@
 
 #include "config_lmpp.h"
 
-#define LCAT_(a, b)    #a b
-#define LCAT(a, b)    LCAT_(a, b) // force substitution
-#define RCAT_(a, b)    a #b
-#define RCAT(a, b)    RCAT_(a, b) // force substitution
-
 #define LMPP_MK_SLAPACK_NAME(n)  LMPP_S_PREFIX(LMPP_CAT_(n, LMPP_LAPACK_SUFFIX))
 #define LMPP_MK_DLAPACK_NAME(n)  LMPP_D_PREFIX(LMPP_CAT_(n, LMPP_LAPACK_SUFFIX))
 
@@ -70,8 +65,8 @@
 
 
 #define __BLOCKSZ__       64 /* block size for cache-friendly matrix-matrix multiply. It should be
-							  * such that __BLOCKSZ__^2*sizeof(LMPP_REAL) is smaller than the CPU (L1)
-							  * data cache size. Notice that a value of 64 when LMPP_REAL=double assumes
+							  * such that __BLOCKSZ__^2*sizeof(FLOATTYPE) is smaller than the CPU (L1)
+							  * data cache size. Notice that a value of 64 when FLOATTYPE = double assumes
 							  * an 32Kb L1 data cache (64*64*8=32K).
 							  */
 #define __BLOCKSZ__SQ    (__BLOCKSZ__)*(__BLOCKSZ__)

@@ -1,0 +1,18 @@
+Results for helical valley function:
+Levenberg-Marquardt returned 42
+
+Solution   p    = 1 5.92246e-11 9.38501e-11 
+Func value f(p) = 0 0 0 
+
+Minimization info:
+Initial ||e||_2       : 2500
+Final   ||e||_2       : 8.82588e-21
+Final   ||J^T e||_inf : 7.13565e-08
+Final   ||Dp||_2      : 1.27989e-15
+Final   mu/max[J^T J] : 2.92336e-06
+# iterations          : 42
+reason 6              : small ||e||_2
+# function evaluations: 58
+# Jacobian evaluations: 5
+# lin systems solved  : 42
+

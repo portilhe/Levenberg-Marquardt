@@ -1,0 +1,18 @@
+Results for Schittkowski modified problem #235:
+Levenberg-Marquardt returned 17
+
+Solution   p    = -1.725 2.9 0.725 
+Func value f(p) = 0 0 
+
+Minimization info:
+Initial ||e||_2       : 1.05187e+07
+Final   ||e||_2       : 0.0799754
+Final   ||J^T e||_inf : 2.32503e-06
+Final   ||Dp||_2      : 1.08689e-32
+Final   mu/max[J^T J] : 121.91
+# iterations          : 17
+reason 2              : small Dp
+# function evaluations: 21
+# Jacobian evaluations: 3
+# lin systems solved  : 18
+

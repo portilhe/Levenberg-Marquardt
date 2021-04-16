@@ -1,0 +1,18 @@
+Results for Hock - Schittkowski problem #01:
+Levenberg-Marquardt returned 15
+
+Solution   p    = 1 1 
+Func value f(p) = 0 0 
+
+Minimization info:
+Initial ||e||_2       : 909
+Final   ||e||_2       : 2.59023e-23
+Final   ||J^T e||_inf : 1.38687e-09
+Final   ||Dp||_2      : 5.55545e-17
+Final   mu/max[J^T J] : 2.53636e-07
+# iterations          : 15
+reason 6              : small ||e||_2
+# function evaluations: 18
+# Jacobian evaluations: 15
+# lin systems solved  : 17
+

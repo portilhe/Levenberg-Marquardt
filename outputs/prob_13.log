@@ -1,0 +1,18 @@
+Results for hatfldb problem:
+Levenberg-Marquardt returned 8
+
+Solution   p    = 1 1 1 1 
+Func value f(p) = 0 0 0 0 
+
+Minimization info:
+Initial ||e||_2       : 0.950263
+Final   ||e||_2       : 9.27447e-27
+Final   ||J^T e||_inf : 1.43593e-11
+Final   ||Dp||_2      : 9.15964e-18
+Final   mu/max[J^T J] : 3.84085e-07
+# iterations          : 8
+reason 6              : small ||e||_2
+# function evaluations: 9
+# Jacobian evaluations: 8
+# lin systems solved  : 8
+

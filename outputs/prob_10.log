@@ -1,0 +1,18 @@
+Results for Hock - Schittkowski problem #51:
+Levenberg-Marquardt returned 116
+
+Solution   p    = 1.00001 0.999996 1 0.99999 0.999996 
+Func value f(p) = 0 0 0 0 0 
+
+Minimization info:
+Initial ||e||_2       : 361.25
+Final   ||e||_2       : 8.70244e-19
+Final   ||J^T e||_inf : 7.53843e-16
+Final   ||Dp||_2      : 0
+Final   mu/max[J^T J] : 22874.8
+# iterations          : 116
+reason 1              : small gradient J^T e
+# function evaluations: 141
+# Jacobian evaluations: 12
+# lin systems solved  : 116
+

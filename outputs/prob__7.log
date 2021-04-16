@@ -1,0 +1,18 @@
+Results for Boggs & Tolle's problem #3:
+Levenberg-Marquardt returned 83
+
+Solution   p    = -0.767418 0.255806 0.627909 -0.116297 0.255806 
+Func value f(p) = 0 0 0 0 0 
+
+Minimization info:
+Initial ||e||_2       : 109.257
+Final   ||e||_2       : 83.7642
+Final   ||J^T e||_inf : 0.00120638
+Final   ||Dp||_2      : 2.74185e-32
+Final   mu/max[J^T J] : 5.30277e+20
+# iterations          : 83
+reason 2              : small Dp
+# function evaluations: 100
+# Jacobian evaluations: 8
+# lin systems solved  : 84
+

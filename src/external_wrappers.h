@@ -53,26 +53,79 @@
 #include "macro_defs.h"
 
 #ifdef LMPP_HAVE_LAPACK
-	/* Matrix multiplication, SVD & Cholesky routines */
+
+	/* Matrix multiplication, vector norm, SVD & Cholesky routines */
+
+	/* Vector 2-norm, avoids overflows */
+	template<typename FLOATTYPE>
+	FLOATTYPE lm_nrm2( int n, FLOATTYPE* x );
 
 	/* C := alpha*op( A )*op( B ) + beta*C */
 	template<typename FLOATTYPE>
-	void lm_gemm( char *transa, char *transb, int *m, int *n, int *k, FLOATTYPE *alpha,
-				  FLOATTYPE *a, int *lda, FLOATTYPE *b, int *ldb, FLOATTYPE *beta, FLOATTYPE *c, int *ldc );
+	void lm_gemm( const char *transa, const char *transb, const int *m, const int *n, const int *k, const FLOATTYPE *alpha,
+				  const FLOATTYPE *a, const int *lda, const FLOATTYPE *b, const int *ldb, const FLOATTYPE *beta, FLOATTYPE *c,
+				  const int *ldc );
+
+	template<typename FLOATTYPE>
+	void lm_geqp3( const int* m, const int* n, FLOATTYPE* a, const int* lda, int* jpvt,
+				  FLOATTYPE* tau, FLOATTYPE* work, const int* lwork, int* info );
+
+	template<typename FLOATTYPE>
+	void lm_trtri( const char* uplo, const char* diag, const int* n, FLOATTYPE* a, const int* lda, int* info );
 
 	/* SVD routines */
 	template<typename FLOATTYPE>
-	int lm_gesvd( char *jobu, char *jobvt, int *m, int *n, FLOATTYPE *a, int *lda, FLOATTYPE *s,
-				  FLOATTYPE *u, int *ldu, FLOATTYPE *vt, int *ldvt, FLOATTYPE *work, int *lwork, int *info );
+	void lm_gesvd( const char *jobu, const char *jobvt, const int *m, const int *n, FLOATTYPE *a, const int *lda, FLOATTYPE *s,
+				   FLOATTYPE *u, const int *ldu, FLOATTYPE *vt, const int *ldvt, FLOATTYPE *work, const int *lwork, int *info );
 
 	template<typename FLOATTYPE>
-	int lm_gesdd( char *jobz, int *m, int *n, FLOATTYPE *a, int *lda, FLOATTYPE *s, FLOATTYPE *u,
-				  int *ldu, FLOATTYPE *vt, int *ldvt, FLOATTYPE *work, int *lwork, int *iwork, int *info);
+	void lm_gesdd( const char *jobz, const int *m, const int *n, FLOATTYPE *a, const int *lda, FLOATTYPE *s, FLOATTYPE *u,
+				   const int *ldu, FLOATTYPE *vt, const int *ldvt, FLOATTYPE *work, const int *lwork, int *iwork, int *info );
 
-	/* Cholesky decomposition */
+	/* Cholesky decomposition and systems solution */
 	template<typename FLOATTYPE>
-	void lm_potf2( char *uplo, int *n, FLOATTYPE *a, int *lda, int *info );
+	void lm_potf2( const char *uplo, const int *n, FLOATTYPE *a, const int *lda, int *info );
 
+	template<typename FLOATTYPE>
+	void lm_potrf( const char *uplo, const int *n, FLOATTYPE *a, const int *lda, int *info ); /* block version of dpotf2 */
+
+	template<typename FLOATTYPE>
+	void lm_potrs( const char *uplo, const int *n, const int *nrhs, const FLOATTYPE *a, const int *lda,
+				   FLOATTYPE *b, const int *ldb, int *info );
+
+	/* QR decomposition */
+	template<typename FLOATTYPE>
+	void lm_geqrf( const int *m, const int *n, FLOATTYPE *a, const int *lda, FLOATTYPE *tau, FLOATTYPE *work,
+				   const int *lwork, int *info );
+
+	template<typename FLOATTYPE>
+	void lm_orgqr( const int *m, const int *n, const int *k, FLOATTYPE *a, const int *lda,
+				   const FLOATTYPE *tau, FLOATTYPE *work, const int *lwork, int *info );
+
+	/* solution of triangular systems */
+	template<typename FLOATTYPE>
+	void lm_trtrs( const char* uplo, const char* trans, const char* diag,
+				   const int* n, const int* nrhs, const FLOATTYPE* a,
+				   const int* lda, FLOATTYPE* b, const int* ldb, int* info );
+
+	/* LU decomposition and systems solution */
+	template<typename FLOATTYPE>
+	void lm_getrf( const int* m, const int* n, FLOATTYPE* a, const int* lda, int* ipiv, int* info );
+
+	template<typename FLOATTYPE>
+	void lm_getrs( const char* trans, const int* n, const int* nrhs,
+				   const FLOATTYPE* a, const int* lda, const int* ipiv, FLOATTYPE* b,
+				   const int* ldb, int* info );
+
+	/* LDLt/UDUt factorization and systems solution */
+	template<typename FLOATTYPE>
+	void lm_sytrf( const char* uplo, const int* n, FLOATTYPE* a, const int* lda,
+				   int* ipiv, FLOATTYPE* work, const int* lwork, int* info );
+
+	template<typename FLOATTYPE>
+	void lm_sytrs( const char* uplo, const int* n, const int* nrhs,
+				   const FLOATTYPE* a, const int* lda, const int* ipiv, FLOATTYPE* b,
+				   const int* ldb, int* info );
 #endif // LMPP_HAVE_LAPACK
 
 #endif // _EXTERNAL_WRAPPERS_H_

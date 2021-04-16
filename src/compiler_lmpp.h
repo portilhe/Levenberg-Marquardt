@@ -46,80 +46,29 @@
 	//
 	/////////////////////////////////////////////////////////////////////////////////
 
-#ifndef _MISC_H_
-#define _MISC_H_
+#ifndef _COMPILER_H_
+#define _COMPILER_H_
 
-template<typename FLOATTYPE>
-using FPTR = void (*)( FLOATTYPE* p, FLOATTYPE* hx, int m, int n, void* adata );
+/* note: intel's icc defines both __ICC & __INTEL_COMPILER.
+ * Also, some compilers other than gcc define __GNUC__,
+ * therefore gcc should be checked last
+ */
+#if !defined(_MSC_VER) && !defined(__ICC) && !defined(__INTEL_COMPILER) && !defined(__GNUC__)
+#define inline // other than MSVC, ICC, GCC: define empty
+#endif
 
-/* blocking-based matrix multiply */
-template<typename FLOATTYPE>
-void levmar_trans_mat_mat_mult( FLOATTYPE* a, FLOATTYPE* b, int n, int m );
+#ifdef _MSC_VER
+#define LMPP_FINITE isfinite // MSVC
+#elif defined(__ICC) || defined(__INTEL_COMPILER) || defined(__GNUC__)
+#define LMPP_FINITE finite // ICC, GCC
+#else
+#define LMPP_FINITE finite // other than MSVC, ICC, GCC, let's hope this will work
+#endif
 
-/* forward finite differences */
-template<typename FLOATTYPE>
-void levmar_fdif_forw_jac_approx( FPTR<FLOATTYPE> func,
-								  FLOATTYPE*      p,
-								  FLOATTYPE*      hx,
-								  FLOATTYPE*      hxx,
-								  FLOATTYPE       delta,
-								  FLOATTYPE*      jac,
-								  int             m,
-								  int             n,
-								  void*           adata );
+#if defined(_MSC_VER) || defined(__ICC) || defined(__INTEL_COMPILER) || defined(__GNUC__)
+#define LMPP_ISINF(x) isinf(x) // MSVC, ICC, GCC
+#else
+#define LMPP_ISINF(x) isinf(x) // other than MSVC, ICC, GCC, let's hope this will work
+#endif
 
-/* central finite differences */
-template<typename FLOATTYPE>
-void levmar_fdif_cent_jac_approx( FPTR<FLOATTYPE> func,
-								  FLOATTYPE*      p,
-								  FLOATTYPE*      hxm,
-								  FLOATTYPE*      hxp,
-								  FLOATTYPE       delta,
-								  FLOATTYPE*      jac,
-								  int             m,
-								  int             n,
-								  void*           adata );
-
-/* e=x-y and ||e|| */
-template<typename FLOATTYPE>
-FLOATTYPE levmar_L2nrmxmy( FLOATTYPE* e, const FLOATTYPE* x, FLOATTYPE* y, int n );
-
-/* covariance of LS fit */
-template<typename FLOATTYPE>
-int levmar_covar( FLOATTYPE* JtJ, FLOATTYPE* C, FLOATTYPE sumsq, int m, int n );
-
-/* box constraints consistency check */
-template<typename FLOATTYPE>
-int levmar_box_check( FLOATTYPE* lb, FLOATTYPE* ub, int m );
-
-/* Cholesky */
-template<typename FLOATTYPE>
-int levmar_chol( FLOATTYPE* C, FLOATTYPE* W, int m );
-
-/* Jacobian verification */
-template<typename FLOATTYPE>
-void levmar_chkjac_impl( FPTR<FLOATTYPE> func,
-						 FPTR<FLOATTYPE> jacf,
-						 FLOATTYPE*      p,
-						 int             m,
-						 int             n,
-						 void*           adata,
-						 FLOATTYPE*      err );
-
-template<typename FLOATTYPE>
-constexpr FLOATTYPE zero()
-{ return FLOATTYPE(0.0); }
-
-template<typename FLOATTYPE>
-constexpr FLOATTYPE one()
-{ return FLOATTYPE(1.0); }
-
-template<typename FLOATTYPE>
-constexpr FLOATTYPE two()
-{ return FLOATTYPE(2.0); }
-
-template<typename FLOATTYPE>
-const FLOATTYPE sq( FLOATTYPE x )
-{ return x*x; }
-
-#endif /* _MISC_H_ */
+#endif /* _COMPILER_H_ */

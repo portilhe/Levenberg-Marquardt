@@ -1,0 +1,40 @@
+Covariance of the fit:
+0.00483514 -0.00162445 -0.000548114 
+-0.00162445 0.000546079 0.000184356 
+-0.000548114 0.000184356 6.22705e-05 
+
+gradient 0, err 0.927642
+gradient 1, err 0.895761
+gradient 2, err 0.970366
+gradient 3, err 0.882106
+gradient 4, err 0.883449
+gradient 5, err 0.90205
+gradient 6, err 0.881515
+gradient 7, err 0.958831
+gradient 8, err 0.917962
+gradient 9, err 0.880929
+gradient 10, err 0.885062
+gradient 11, err 0.891078
+gradient 12, err 0.923433
+gradient 13, err 0.892629
+gradient 14, err 0.87781
+gradient 15, err 0.863323
+
+Results for Meyer's (reformulated) problem:
+Levenberg-Marquardt returned 208
+
+Solution   p    = 2.48178 6.18135 3.50224 
+Func value f(p) = 34.78 28.61 23.65 19.63 16.37 13.72 11.54 9.744 8.261 7.03 6.005 5.147 4.427 3.82 3.307 2.872 
+
+Minimization info:
+Initial ||e||_2       : 1308.25
+Final   ||e||_2       : 8.79459e-05
+Final   ||J^T e||_inf : 1.17225e-07
+Final   ||Dp||_2      : 1.26258e-31
+Final   mu/max[J^T J] : 6325.57
+# iterations          : 208
+reason 2              : small Dp
+# function evaluations: 272
+# Jacobian evaluations: 21
+# lin systems solved  : 209
+

@@ -1,0 +1,18 @@
+Results for hatfldc problem:
+Levenberg-Marquardt returned 4
+
+Solution   p    = 1 1 1 1 
+Func value f(p) = 0 0 0 0 
+
+Minimization info:
+Initial ||e||_2       : 0.0247401
+Final   ||e||_2       : 1.37188e-29
+Final   ||J^T e||_inf : 5.11354e-11
+Final   ||Dp||_2      : 1.48847e-18
+Final   mu/max[J^T J] : 7.63584e-08
+# iterations          : 4
+reason 6              : small ||e||_2
+# function evaluations: 5
+# Jacobian evaluations: 4
+# lin systems solved  : 4
+

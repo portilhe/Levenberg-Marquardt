@@ -1,0 +1,18 @@
+Results for Boggs & Tolle modified problem #7:
+Levenberg-Marquardt returned 656
+
+Solution   p    = 0.701001 0.488959 0.189959 1.18996 -0.201001 
+Func value f(p) = 0 0 0 0 0 
+
+Minimization info:
+Initial ||e||_2       : 113808
+Final   ||e||_2       : 0.0404978
+Final   ||J^T e||_inf : 0
+Final   ||Dp||_2      : 0
+Final   mu/max[J^T J] : -nan(ind)
+# iterations          : 656
+reason 1              : small gradient J^T e
+# function evaluations: 814
+# Jacobian evaluations: 657
+# lin systems solved  : 813
+

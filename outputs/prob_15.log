@@ -1,0 +1,18 @@
+Results for equilibrium combustion problem:
+Levenberg-Marquardt returned 75
+
+Solution   p    = 0.00343023 31.3265 0.0683504 0.859529 0.0369624 
+Func value f(p) = 0 0 0 0 0 
+
+Minimization info:
+Initial ||e||_2       : 0.999817
+Final   ||e||_2       : 5.43076e-22
+Final   ||J^T e||_inf : 2.61286e-08
+Final   ||Dp||_2      : 4.03557e-10
+Final   mu/max[J^T J] : 9.86002e-15
+# iterations          : 75
+reason 6              : small ||e||_2
+# function evaluations: 108
+# Jacobian evaluations: 75
+# lin systems solved  : 75
+

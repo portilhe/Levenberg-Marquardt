@@ -1,0 +1,18 @@
+Results for Powell's function:
+Levenberg-Marquardt returned 198
+
+Solution   p    = -9.00243e-11 -6.71941e-05 
+Func value f(p) = 0 0 
+
+Minimization info:
+Initial ||e||_2       : 145.362
+Final   ||e||_2       : 8.87028e-21
+Final   ||J^T e||_inf : 2.977e-09
+Final   ||Dp||_2      : 1.33874e-11
+Final   mu/max[J^T J] : 6.27095e-15
+# iterations          : 198
+reason 6              : small ||e||_2
+# function evaluations: 208
+# Jacobian evaluations: 198
+# lin systems solved  : 207
+

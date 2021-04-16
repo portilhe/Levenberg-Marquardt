@@ -1,0 +1,18 @@
+Results for Hock - Schittkowski modified problem #76:
+Levenberg-Marquardt returned 1000
+
+Solution   p    = 3.61808e-06 0.58673 0.228318 0.643621 
+Func value f(p) = 0 0 0 0 
+
+Minimization info:
+Initial ||e||_2       : 4.25829e+08
+Final   ||e||_2       : 0.431379
+Final   ||J^T e||_inf : 0.15281
+Final   ||Dp||_2      : 1.00539e-14
+Final   mu/max[J^T J] : 4.68673e-06
+# iterations          : 1000
+reason 3              : itmax
+# function evaluations: 1226
+# Jacobian evaluations: 75
+# lin systems solved  : 1000
+

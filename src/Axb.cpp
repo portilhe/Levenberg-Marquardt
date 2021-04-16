@@ -50,63 +50,65 @@
  * LAPACK-based implementations for various linear system solvers.
  ********************************************************************************/
 
-#include <iostream>
-//#include <cstdlib>
+#include <vector>
 #include <cstring>
-//#include <cmath>
+#include <numeric>
+#include <iostream>
+#include <algorithm>
 
+#include "Axb.h"
 #include "misc.h"
-#include "config_lmpp.h"
 #include "external_wrappers.h"
 
 /* Solvers for the linear systems Ax=b. Solvers should NOT modify their A & B arguments! */
 
+//#undef LMPP_HAVE_LAPACK
 #ifdef LMPP_HAVE_LAPACK
 
 /*
-* This function returns the solution of Ax = b
-*
-* The function is based on QR decomposition with explicit computation of Q:
-* If A=Q R with Q orthogonal and R upper triangular, the linear system becomes
-* Q R x = b or R x = Q^T b.
-* The last equation can be solved directly.
-*
-* A is mxm, b is mx1
-*
-* The function returns 0 in case of error, 1 if successful
-*
-* This function is often called repetitively to solve problems of identical
-* dimensions. To avoid repetitive malloc's and free's, allocated memory is
-* retained between calls and free'd-malloc'ed when not of the appropriate size.
-* A call with NULL as the first argument forces this memory to be released.
-*/
+ * This function returns the solution of Ax = b
+ *
+ * The function is based on QR decomposition with explicit computation of Q:
+ * If A=Q R with Q orthogonal and R upper triangular, the linear system becomes
+ * Q R x = b or R x = Q^T b.
+ * The last equation can be solved directly.
+ *
+ * A is mxm, b is mx1
+ *
+ * The function returns 0 in case of error, 1 if successful
+ *
+ * This function is often called repetitively to solve problems of identical
+ * dimensions. To avoid repetitive malloc's and free's, allocated memory is
+ * retained between calls and free'd-malloc'ed when not of the appropriate size.
+ * A call with NULL as the first argument forces this memory to be released.
+ */
 template<typename FLOATTYPE>
-int Ax_eq_b_QR( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m )
+int Ax_eq_b_QR( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m, std::vector<char>& buffer )
 {
-	static int nb = 0;
-
-	if(!A) return 1; /* NOP */
-
-	/* calculate required memory size */
-	int a_sz   = m*m;
-	int tau_sz = m;
-	int r_sz   = m*m; /* only the upper triangular part really needed */
-
 	int info;
-	int work_sz;
+	static int nb = 0;
 	if( nb == 0 )
 	{
-		work_sz = -1;
-		FLOATTYPE aux;
-		// workspace query; optimal size is returned in aux
-		lm_geqrf<FLOATTYPE>( &m, &m, NULL, &m, NULL, &aux, &work_sz, &info );
-		nb = ((int)aux)/m; // optimal worksize is m*nb
+		int auxi= -1;
+		FLOATTYPE auxf;
+		// workspace query; optimal size is returned in auxf
+		lm_geqrf<FLOATTYPE>( &m, &m, nullptr, &m, nullptr, &auxf, &auxi, &info );
+		nb      = ((int)auxf)/m; // optimal worksize is m*nb
 	}
-	work_sz = nb*m;
 
-	std::unique_ptr<FLOATTYPE[]> buf = std::make_unique<FLOATTYPE[]>( a_sz + tau_sz + r_sz + work_sz );
+	/* calculate required memory size */
+	const int work_sz = nb*m;
+	const int a_sz    = m*m;
+	const int tau_sz  = m;
+	const int r_sz    = m*m; /* only the upper triangular part really needed */
+	const int buf_sz  = a_sz + tau_sz + r_sz + work_sz;
 
-	FLOATTYPE* a    = buf.get();
+	if( buffer.size() < (std::size_t)buf_sz*sizeof(FLOATTYPE) )
+	{
+		buffer.resize( buf_sz*sizeof(FLOATTYPE) );
+	}
+
+	FLOATTYPE* a    = reinterpret_cast<FLOATTYPE*>( buffer.data() );
 	FLOATTYPE* tau  = a   + a_sz;
 	FLOATTYPE* r    = tau + tau_sz;
 	FLOATTYPE* work = r   + r_sz;
@@ -138,7 +140,7 @@ int Ax_eq_b_QR( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m )
 	}
 
 	/* R is stored in the upper triangular part of a; copy it in r so that ORGQR() below won't destroy it */ 
-	std::memcpy( r, a, r_sz*sizeof(FLOATTYPE));
+	std::memcpy( r, a, r_sz * sizeof(FLOATTYPE) );
 
 	/* compute Q using the elementary reflectors computed by the above decomposition */
 	lm_orgqr( &m, &m, &m, a, &m, tau, work, &work_sz, &info );
@@ -159,12 +161,7 @@ int Ax_eq_b_QR( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m )
 	/* Q is now in a; compute Q^T b in x */
 	for( int i = 0; i < m; ++i )
 	{
-		FLOATTYPE sum_ = FLOATTYPE(0.0);
-		for( int j = 0; j < m; ++j )
-		{
-			sum_ += a[i*m+j] * B[j];
-		}
-		x[i] = sum_;
+		x[i] = std::accumulate( a + i*m, a + (i+1)*m,  zero<FLOATTYPE>() );
 	}
 
 	/* solve the linear system R x = Q^t b */
@@ -188,26 +185,26 @@ int Ax_eq_b_QR( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m )
 }
 
 /*
-* This function returns the solution of min_x ||Ax - b||
-*
-* || . || is the second order (i.e. L2) norm. This is a least squares technique that
-* is based on QR decomposition:
-* If A=Q R with Q orthogonal and R upper triangular, the normal equations become
-* (A^T A) x = A^T b  or (R^T Q^T Q R) x = A^T b or (R^T R) x = A^T b.
-* This amounts to solving R^T y = A^T b for y and then R x = y for x
-* Note that Q does not need to be explicitly computed
-*
-* A is mxn, b is mx1
-*
-* The function returns 0 in case of error, 1 if successful
-*
-* This function is often called repetitively to solve problems of identical
-* dimensions. To avoid repetitive malloc's and free's, allocated memory is
-* retained between calls and free'd-malloc'ed when not of the appropriate size.
-* A call with NULL as the first argument forces this memory to be released.
-*/
+ * This function returns the solution of min_x ||Ax - b||
+ *
+ * || . || is the second order (i.e. L2) norm. This is a least squares technique that
+ * is based on QR decomposition:
+ * If A=Q R with Q orthogonal and R upper triangular, the normal equations become
+ * (A^T A) x = A^T b  or (R^T Q^T Q R) x = A^T b or (R^T R) x = A^T b.
+ * This amounts to solving R^T y = A^T b for y and then R x = y for x
+ * Note that Q does not need to be explicitly computed
+ *
+ * A is mxn, b is mx1
+ *
+ * The function returns 0 in case of error, 1 if successful
+ *
+ * This function is often called repetitively to solve problems of identical
+ * dimensions. To avoid repetitive malloc's and free's, allocated memory is
+ * retained between calls and free'd-malloc'ed when not of the appropriate size.
+ * A call with NULL as the first argument forces this memory to be released.
+ */
 template<typename FLOATTYPE>
-int Ax_eq_b_QRLS( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m, int n )
+int Ax_eq_b_QRLS( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m, int n, std::vector<char>& buffer )
 {
 	if( m < n )
 	{
@@ -215,30 +212,30 @@ int Ax_eq_b_QRLS( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m, int n )
 		exit(1);
 	}
 
-	static int nb = 0;
-
-	if(!A) return 1; /* NOP */
-
-	/* calculate required memory size */
-	int a_sz   = m*n;
-	int tau_sz = n;
-	int r_sz   = n*n;
-
 	int info;
-	int work_sz;
+	static int nb = 0;
 	if( nb == 0 )
 	{
-		work_sz = -1;
-		FLOATTYPE aux;
-		// workspace query; optimal size is returned in aux
-		lm_geqrf<FLOATTYPE>( &m, &m, NULL, &m, NULL, &aux, &work_sz, &info );
-		nb = ((int)aux)/m; // optimal worksize is m*nb
+		int auxi = -1;
+		FLOATTYPE auxf;
+		// workspace query; optimal size is returned in auxf
+		lm_geqrf<FLOATTYPE>( &m, &m, nullptr, &m, nullptr, &auxf, &auxi, &info );
+		nb = ((int)auxf)/m; // optimal worksize is m*nb
 	}
-	work_sz = nb*m;
 
-	std::unique_ptr<FLOATTYPE[]> buf = std::make_unique<FLOATTYPE[]>( a_sz + tau_sz + r_sz + work_sz );
+	/* calculate required memory size */
+	const int work_sz = nb*m;
+	const int a_sz    = m*n;
+	const int tau_sz  = n;
+	const int r_sz    = n*n;
+	const int buf_sz  = a_sz + tau_sz + r_sz + work_sz;
 
-	FLOATTYPE* a    = buf.get();
+	if( buffer.size() < (std::size_t)buf_sz*sizeof(FLOATTYPE) )
+	{
+		buffer.resize( buf_sz*sizeof(FLOATTYPE) );
+	}
+
+	FLOATTYPE* a    = reinterpret_cast<FLOATTYPE*>( buffer.data() );
 	FLOATTYPE* tau  = a   + a_sz;
 	FLOATTYPE* r    = tau + tau_sz;
 	FLOATTYPE* work = r   + r_sz;
@@ -255,7 +252,7 @@ int Ax_eq_b_QRLS( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m, int n )
 	/* compute A^T b in x */
 	for( int i = 0; i < n; ++i )
 	{
-		FLOATTYPE sum_ = FLOATTYPE(0.0);
+		FLOATTYPE sum_ = zero<FLOATTYPE>();
 		for( int j = 0; j < m; ++j )
 		{
 			sum_ += A[j*n+i] * B[j];
@@ -290,7 +287,7 @@ int Ax_eq_b_QRLS( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m, int n )
 		/* lower part is zero */
 		for( int i = j+1; i < n; ++i )
 		{
-			r[i+j*n] = FLOATTYPE(0.0);
+			r[i+j*n] = zero<FLOATTYPE>();
 		}
 	}
 
@@ -331,44 +328,45 @@ int Ax_eq_b_QRLS( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m, int n )
 }
 
 /*
-* This function returns the solution of Ax=b
-*
-* The function assumes that A is symmetric & postive definite and employs
-* the Cholesky decomposition:
-* If A=L L^T with L lower triangular, the system to be solved becomes
-* (L L^T) x = b
-* This amounts to solving L y = b for y and then L^T x = y for x
-*
-* A is mxm, b is mx1
-*
-* The function returns 0 in case of error, 1 if successful
-*
-* This function is often called repetitively to solve problems of identical
-* dimensions. To avoid repetitive malloc's and free's, allocated memory is
-* retained between calls and free'd-malloc'ed when not of the appropriate size.
-* A call with NULL as the first argument forces this memory to be released.
-*/
+ * This function returns the solution of Ax=b
+ *
+ * The function assumes that A is symmetric & postive definite and employs
+ * the Cholesky decomposition:
+ * If A=L L^T with L lower triangular, the system to be solved becomes
+ * (L L^T) x = b
+ * This amounts to solving L y = b for y and then L^T x = y for x
+ *
+ * A is mxm, b is mx1
+ *
+ * The function returns 0 in case of error, 1 if successful
+ *
+ * This function is often called repetitively to solve problems of identical
+ * dimensions. To avoid repetitive malloc's and free's, allocated memory is
+ * retained between calls and free'd-malloc'ed when not of the appropriate size.
+ * A call with NULL as the first argument forces this memory to be released.
+ */
 template<typename FLOATTYPE>
-int Ax_eq_b_Chol( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m )
+int Ax_eq_b_Chol( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m, std::vector<char>& buffer )
 {
-	if(!A) return 1; /* NOP */
-
 	/* calculate required memory size */
 	int a_sz = m*m;
 
-	std::unique_ptr<FLOATTYPE[]> buf = std::make_unique<FLOATTYPE[]>( a_sz );
+	if( buffer.size() < (std::size_t)a_sz*sizeof(FLOATTYPE) )
+	{
+		buffer.resize( a_sz*sizeof(FLOATTYPE) );
+	}
 
-	FLOATTYPE* a = buf.get();
+	FLOATTYPE* a = reinterpret_cast<FLOATTYPE*>( buffer.data() );
 
 	/* store A into a and B into x. A is assumed symmetric,
-	* hence no transposition is needed
-	*/
+	 * hence no transposition is needed
+	 */
 	std::memcpy( a, A, a_sz * sizeof(FLOATTYPE) );
 	std::memcpy( x, B, m    * sizeof(FLOATTYPE) );
 
 	int info;
 	/* Cholesky decomposition of A */
-	//POTF2("L", (int *)&m, a, (int *)&m, (int *)&info);
+	//lm_potf2( "L", &m, a, &m, &info );
 	lm_potrf( "L", &m, a, &m, &info );
 	/* error treatment */
 	if( info != 0 )
@@ -434,35 +432,37 @@ int Ax_eq_b_Chol( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m )
 }
 
 /*
-* This function returns the solution of Ax = b
-*
-* The function employs LU decomposition:
-* If A=L U with L lower and U upper triangular, then the original system
-* amounts to solving
-* L y = b, U x = y
-*
-* A is mxm, b is mx1
-*
-* The function returns 0 in case of error, 1 if successful
-*
-* This function is often called repetitively to solve problems of identical
-* dimensions. To avoid repetitive malloc's and free's, allocated memory is
-* retained between calls and free'd-malloc'ed when not of the appropriate size.
-* A call with NULL as the first argument forces this memory to be released.
-*/
+ * This function returns the solution of Ax = b
+ *
+ * The function employs LU decomposition:
+ * If A=L U with L lower and U upper triangular, then the original system
+ * amounts to solving
+ * L y = b, U x = y
+ *
+ * A is mxm, b is mx1
+ *
+ * The function returns 0 in case of error, 1 if successful
+ *
+ * This function is often called repetitively to solve problems of identical
+ * dimensions. To avoid repetitive malloc's and free's, allocated memory is
+ * retained between calls and free'd-malloc'ed when not of the appropriate size.
+ * A call with NULL as the first argument forces this memory to be released.
+ */
 template<typename FLOATTYPE>
-int Ax_eq_b_LU( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m )
+int Ax_eq_b_LU( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m, std::vector<char>& buffer )
 {
-	if(!A) return 1; /* NOP */
-
 	/* calculate required memory size */
-	int a_sz    = m*m;
-	int ipiv_sz = m;
+	const int a_sz    = m*m;
+	const int ipiv_sz = m;
+	const int tot_csz = a_sz * sizeof(FLOATTYPE) + ipiv_sz * sizeof(int);
 
-	std::unique_ptr<FLOATTYPE[]> buf  = std::make_unique<FLOATTYPE[]>( a_sz    );
-	std::unique_ptr<int[]>       ipiv = std::make_unique<int[]>      ( ipiv_sz );
+	if( buffer.size() < (std::size_t)tot_csz )
+	{
+		buffer.resize( tot_csz );
+	}
 
-	FLOATTYPE* a = buf.get();
+	FLOATTYPE* a    = reinterpret_cast<FLOATTYPE*>( buffer.data() );
+	int*       ipiv = reinterpret_cast<int*>      ( a + a_sz );
 
 	/* store A (column major!) into a and B into x */
 	for( int i = 0; i < m; ++i )
@@ -476,7 +476,7 @@ int Ax_eq_b_LU( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m )
 
 	int info;
 	/* LU decomposition for A */
-	lm_getrf( &m, &m, a, &m, ipiv.get(), &info );  
+	lm_getrf<FLOATTYPE>( &m, &m, a, &m, ipiv, &info );  
 	if( info != 0 )
 	{
 		if( info < 0 )
@@ -493,7 +493,7 @@ int Ax_eq_b_LU( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m )
 
 	int nrhs = 1;
 	/* solve the system with the computed LU */
-	lm_getrs( "N", &m, &nrhs, a, &m, ipiv.get(), x, &m, &info );
+	lm_getrs<FLOATTYPE>( "N", &m, &nrhs, a, &m, ipiv, x, &m, &info );
 	if( info != 0 )
 	{
 		if( info < 0 )
@@ -512,54 +512,61 @@ int Ax_eq_b_LU( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m )
 }
 
 /*
-* This function returns the solution of Ax = b
-*
-* The function is based on SVD decomposition:
-* If A=U D V^T with U, V orthogonal and D diagonal, the linear system becomes
-* (U D V^T) x = b or x=V D^{-1} U^T b
-* Note that V D^{-1} U^T is the pseudoinverse A^+
-*
-* A is mxm, b is mx1.
-*
-* The function returns 0 in case of error, 1 if successful
-*
-* This function is often called repetitively to solve problems of identical
-* dimensions. To avoid repetitive malloc's and free's, allocated memory is
-* retained between calls and free'd-malloc'ed when not of the appropriate size.
-* A call with NULL as the first argument forces this memory to be released.
-*/
+ * This function returns the solution of Ax = b
+ *
+ * The function is based on SVD decomposition:
+ * If A=U D V^T with U, V orthogonal and D diagonal, the linear system becomes
+ * (U D V^T) x = b or x=V D^{-1} U^T b
+ * Note that V D^{-1} U^T is the pseudoinverse A^+
+ *
+ * A is mxm, b is mx1.
+ *
+ * The function returns 0 in case of error, 1 if successful
+ *
+ * This function is often called repetitively to solve problems of identical
+ * dimensions. To avoid repetitive malloc's and free's, allocated memory is
+ * retained between calls and free'd-malloc'ed when not of the appropriate size.
+ * A call with NULL as the first argument forces this memory to be released.
+ */
 template<typename FLOATTYPE>
-int Ax_eq_b_SVD( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m )
+int Ax_eq_b_SVD( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m, std::vector<char>& buffer )
 {
-	if(!A) return 1; /* NOP */
-
 	int info;
+
 	/* calculate required memory size */
 #if 1 /* use optimal size */
 	int work_sz = -1; // workspace query. Keep in mind that GESDD requires more memory than GESVD
-	FLOATTYPE thresh;
-	/* note that optimal work size is returned in thresh */
-	//lm_gesvd( "A", "A", &m, &m, NULL, &m, NULL, NULL, &m, NULL, &m, &thresh, &work_sz, &info );
-	lm_gesdd( "A", &m, &m, NULL, &m, NULL, NULL, &m, NULL, &m, &thresh, &work_sz, NULL, &info );
-	work_sz = (int)thresh;
+	{
+			FLOATTYPE aux;
+			/* note that optimal work size is returned in aux */
+			//lm_gesvd( "A", "A", &m, &m, nullptr, &m, nullptr, nullptr, &m, nullptr, &m, &aux, &work_sz, &info );
+			lm_gesdd<FLOATTYPE>( "A", &m, &m, nullptr, &m, nullptr, nullptr, &m, nullptr, &m, &aux, &work_sz, nullptr, &info );
+			work_sz = (int)aux;
+	}
 #else /* use minimum size */
 	//int work_sz = 5*m;       // min worksize for GESVD
 	int work_sz = m*(7*m+4); // min worksize for GESDD
 #endif
-	int a_sz    = m*m;
-	int u_sz    = m*m;
-	int s_sz    = m;
-	int vt_sz   = m*m;
-	int iwork_sz = 8*m;
 
-	std::unique_ptr<FLOATTYPE[]> buf   = std::make_unique<FLOATTYPE[]>( a_sz + u_sz + s_sz + vt_sz + work_sz );
-	std::unique_ptr<int[]>       iwork = std::make_unique<int[]>      ( iwork_sz );
+	const int a_sz     = m*m;
+	const int u_sz     = m*m;
+	const int s_sz     = m;
+	const int vt_sz    = m*m;
+	const int iwork_sz = 8*m;
+	const int buf_sz   = a_sz + u_sz + s_sz + vt_sz + work_sz;
+	const int tot_csz  = buf_sz * sizeof(FLOATTYPE) + iwork_sz * sizeof(int);
 
-	FLOATTYPE* a    = buf.get();
-	FLOATTYPE* u    = a + a_sz;
-	FLOATTYPE* s    = u + u_sz;
-	FLOATTYPE* vt   = s + s_sz;
-	FLOATTYPE* work = vt + vt_sz;
+	if( buffer.size() < (std::size_t)tot_csz )
+	{
+		buffer.resize( tot_csz );
+	}
+
+	FLOATTYPE* a     = reinterpret_cast<FLOATTYPE*>( buffer.data() );
+	FLOATTYPE* u     = a + a_sz;
+	FLOATTYPE* s     = u + u_sz;
+	FLOATTYPE* vt    = s + s_sz;
+	FLOATTYPE* work  = vt + vt_sz;
+	int*       iwork = reinterpret_cast<int*>( a + buf_sz );
 
 	/* store A (column major!) into a */
 	for( int i = 0; i < m; ++i )
@@ -572,7 +579,7 @@ int Ax_eq_b_SVD( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m )
 
 	/* SVD decomposition of A */
 	//lm_gesvd( "A", "A", &m, &m, a, &m, s, u, &m, vt, &m, work, &work_sz, &info );
-	lm_gesdd( "A", &m, &m, a, &m, s, u, &m, vt, &m, work, &work_sz, iwork.get(), &info );
+	lm_gesdd( "A", &m, &m, a, &m, s, u, &m, vt, &m, work, &work_sz, iwork, &info );
 
 	/* error treatment */
 	if( info != 0 )
@@ -590,11 +597,11 @@ int Ax_eq_b_SVD( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m )
 	}
 
 	/* compute the pseudoinverse in a */
-	std::fill( a, a+a_sz, FLOATTYPE(0.0));
+	std::fill( a, a+a_sz, zero<FLOATTYPE>() );
 	FLOATTYPE thresh = s[0] * std::numeric_limits<FLOATTYPE>::epsilon();
 	for( int rank = 0; rank < m && s[rank] > thresh; ++rank )
 	{
-		FLOATTYPE one_over_denom = FLOATTYPE(1.0)/s[rank];
+		FLOATTYPE one_over_denom = one<FLOATTYPE>() / s[rank];
 		for( int j = 0; j < m; ++j )
 		{
 			for( int i = 0; i < m; ++i )
@@ -607,7 +614,7 @@ int Ax_eq_b_SVD( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m )
 	/* compute A^+ b in x */
 	for( int i = 0; i < m; ++i )
 	{
-		FLOATTYPE sum_ = FLOATTYPE(0.0);
+		FLOATTYPE sum_ = zero<FLOATTYPE>();
 		for( int j = 0; j < m; ++j )
 		{
 			sum_ += a[i*m+j] * B[j];
@@ -619,63 +626,60 @@ int Ax_eq_b_SVD( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m )
 }
 
 /*
-* This function returns the solution of Ax = b for a real symmetric matrix A
-*
-* The function is based on LDLT factorization with the pivoting
-* strategy of Bunch and Kaufman:
-* A is factored as L*D*L^T where L is lower triangular and
-* D symmetric and block diagonal (aka spectral decomposition,
-* Banachiewicz factorization, modified Cholesky factorization)
-*
-* A is mxm, b is mx1.
-*
-* The function returns 0 in case of error, 1 if successfull
-*
-* This function is often called repetitively to solve problems of identical
-* dimensions. To avoid repetitive malloc's and free's, allocated memory is
-* retained between calls and free'd-malloc'ed when not of the appropriate size.
-* A call with NULL as the first argument forces this memory to be released.
-*/
+ * This function returns the solution of Ax = b for a real symmetric matrix A
+ *
+ * The function is based on LDLT factorization with the pivoting
+ * strategy of Bunch and Kaufman:
+ * A is factored as L*D*L^T where L is lower triangular and
+ * D symmetric and block diagonal (aka spectral decomposition,
+ * Banachiewicz factorization, modified Cholesky factorization)
+ *
+ * A is mxm, b is mx1.
+ *
+ * The function returns 0 in case of error, 1 if successfull
+ *
+ * This function is often called repetitively to solve problems of identical
+ * dimensions. To avoid repetitive malloc's and free's, allocated memory is
+ * retained between calls and free'd-malloc'ed when not of the appropriate size.
+ * A call with NULL as the first argument forces this memory to be released.
+ */
 template<typename FLOATTYPE>
-int Ax_eq_b_BK( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m )
+int Ax_eq_b_BK( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m, std::vector<char>& buffer )
 {
-	if(!A) return 1; /* NOP */
-
+	int info;
 	static int nb = 0;
-
-	int nrhs=1;
-
-	if(!A) return 1; /* NOP */
+	if( nb == 0 )
+	{
+		FLOATTYPE auxf;
+		int auxi = -1; // workspace query; optimal size is returned in auxf
+		lm_sytrf<FLOATTYPE>( "L", &m, nullptr, &m, nullptr, &auxf, &auxi, &info );
+		nb = ((int)auxf)/m; // optimal worksize is m*nb
+	}
 
 	/* calculate required memory size */
-	int a_sz    = m*m;
-	int ipiv_sz = m;
+	const int a_sz    = m*m;
+	const int work_sz = nb*m;
+	const int buf_sz  = a_sz + work_sz;
+	const int ipiv_sz = m;
+	const int tot_csz = buf_sz * sizeof(FLOATTYPE) + ipiv_sz * sizeof(int);
 
-	int info;
-	int work_sz;
-	if( nb == 0)
+	if( buffer.size() < (std::size_t)tot_csz )
 	{
-		FLOATTYPE aux;
-		work_sz = -1; // workspace query; optimal size is returned in aux
-		lm_sytrf( "L", &m, NULL, &m, NULL, &aux, &work_sz, &info );
-		nb = ((int)aux)/m; // optimal worksize is m*nb
+		buffer.resize( tot_csz );
 	}
-	work_sz = ( nb > 0 ? nb*m : 1 );
 
-	std::unique_ptr<FLOATTYPE[]> buf  = std::make_unique<FLOATTYPE[]>( a_sz + work_sz );
-	std::unique_ptr<int[]>       ipiv = std::make_unique<int[]>      ( ipiv_sz );
-
-	FLOATTYPE* a    = buf.get();
+	FLOATTYPE* a    = reinterpret_cast<FLOATTYPE*>( buffer.data() );
 	FLOATTYPE* work = a + a_sz;
+	int*       ipiv = reinterpret_cast<int*>      ( a + buf_sz );
 
 	/* store A into a and B into x; A is assumed to be symmetric, hence
 	 * the column and row major order representations are the same
 	 */
-	std::memcpy(a, A, a_sz * sizeof(FLOATTYPE));
-	std::memcpy(x, B, m    * sizeof(FLOATTYPE));
+	std::memcpy( a, A, a_sz * sizeof(FLOATTYPE) );
+	std::memcpy( x, B, m    * sizeof(FLOATTYPE) );
 
 	/* LDLt factorization for A */
-	lm_sytrf( "L", &m, a, &m, ipiv.get(), work, &work_sz, &info );
+	lm_sytrf( "L", &m, a, &m, ipiv, work, &work_sz, &info );
 	if( info != 0 )
 	{
 		if( info < 0 )
@@ -691,6 +695,7 @@ int Ax_eq_b_BK( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m )
 	}
 
 	/* solve the system with the computed factorization */
+	int nrhs = 1;
 	lm_sytrs( "L", &m, &nrhs, a, &m, ipiv, x, &m, &info );
 	if( info < 0 )
 	{
@@ -701,38 +706,42 @@ int Ax_eq_b_BK( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m )
 	return 1;
 }
 
-//#else // no LAPACK
+#else // no LAPACK
 
 /*
-* This function returns the solution of Ax = b
-*
-* The function employs LU decomposition followed by forward/back substitution (see 
-* also the LAPACK-based LU solver above)
-*
-* A is mxm, b is mx1
-*
-* The function returns 0 in case of error, 1 if successful
-*
-* This function is often called repetitively to solve problems of identical
-* dimensions. To avoid repetitive malloc's and free's, allocated memory is
-* retained between calls and free'd-malloc'ed when not of the appropriate size.
-* A call with NULL as the first argument forces this memory to be released.
-*/
+ * This function returns the solution of Ax = b
+ *
+ * The function employs LU decomposition followed by forward/back substitution (see 
+ * also the LAPACK-based LU solver above)
+ *
+ * A is mxm, b is mx1
+ *
+ * The function returns 0 in case of error, 1 if successful
+ *
+ * This function is often called repetitively to solve problems of identical
+ * dimensions. To avoid repetitive malloc's and free's, allocated memory is
+ * retained between calls and free'd-malloc'ed when not of the appropriate size.
+ * A call with NULL as the first argument forces this memory to be released.
+ */
 template<typename FLOATTYPE>
-int Ax_eq_b_LU_noLapack( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m )
+int Ax_eq_b_LU_noLapack( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m, std::vector<char>& buffer )
 {
-	if(!A) return 1; /* NOP */
 
 	/* calculate required memory size */
-	int idx_sz  = m;
-	int a_sz    = m*m;
-	int work_sz = m;
+	const int idx_sz  = m;
+	const int a_sz    = m*m;
+	const int work_sz = m;
+	const int buf_sz  = a_sz + work_sz;
+	const int tot_csz = buf_sz * sizeof(FLOATTYPE) + idx_sz * sizeof(int);
 
-	std::unique_ptr<FLOATTYPE[]> buf = std::make_unique<FLOATTYPE[]>( a_sz + work_sz );
-	std::unique_ptr<int[]>       idx = std::make_unique<int[]>      ( idx_sz );
+	if( buffer.size() < (std::size_t)tot_csz )
+	{
+		buffer.resize( tot_csz );
+	}
 
-	FLOATTYPE* a    = buf.get();
+	FLOATTYPE* a    = reinterpret_cast<FLOATTYPE*>( buffer.data() );
 	FLOATTYPE* work = a + a_sz;
+	int*       idx  = reinterpret_cast<int*>( a + buf_sz );
 
 	/* avoid destroying A, B by copying them to a, x resp. */
 	std::memcpy( a, A, a_sz * sizeof(FLOATTYPE) );
@@ -744,12 +753,12 @@ int Ax_eq_b_LU_noLapack( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m )
 	for( int i = 0; i < m; ++i )
 	{
 		FLOATTYPE max_ = *std::max_element( a+(i*m), a+(i*m+m), abs_compare );
-		if( max_ == 0.0 )
+		if( max_ == zero<FLOATTYPE>() )
 		{
 			std::cerr << "Singular matrix A in Ax_eq_b_LU_noLapack()!\n";
 			return 0;
 		}
-		work[i] = FLOATTYPE(1.0)/max_;
+		work[i] = one<FLOATTYPE>() / max_;
 	}
 
 	for( int j = 0; j < m; ++j )
@@ -763,7 +772,7 @@ int Ax_eq_b_LU_noLapack( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m )
 			}
 			a[i*m+j] = sum_;
 		}
-		FLOATTYPE max_ = FLOATTYPE(0.0);
+		FLOATTYPE max_ = zero<FLOATTYPE>();
 		int       maxi = -1;
 		for( int i = j; i < m; ++i )
 		{
@@ -792,14 +801,14 @@ int Ax_eq_b_LU_noLapack( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m )
 		}
 
 		idx[j] = maxi;
-		if( a[j*m+j] == FLOATTYPE(0.0) )
+		if( a[j*m+j] == zero<FLOATTYPE>() )
 		{
 			a[j*m+j] = std::numeric_limits<FLOATTYPE>::epsilon();
 		}
 
 		if( j != m-1 )
 		{
-			FLOATTYPE aux = FLOATTYPE(1.0) / a[j*m+j];
+			FLOATTYPE aux = one<FLOATTYPE>() / a[j*m+j];
 			for( int i = j+1; i < m; ++i )
 			{
 				a[i*m+j] *= aux;
@@ -823,7 +832,7 @@ int Ax_eq_b_LU_noLapack( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m )
 				sum_ -= a[i*m+j] * x[j];
 			}
 		}
-		else if( sum_ != 0.0 )
+		else if( sum_ != zero<FLOATTYPE>() )
 		{
 				k = i+1;
 		}
@@ -843,4 +852,30 @@ int Ax_eq_b_LU_noLapack( FLOATTYPE* A, FLOATTYPE* B, FLOATTYPE* x, int m )
 	return 1;
 }
 
-#endif /* HAVE_LAPACK */
+#endif /* LMPP_HAVE_LAPACK */
+
+#ifdef LMPP_DBL_PREC
+#ifdef LMPP_HAVE_LAPACK
+template int Ax_eq_b_QR<double>( double* A, double* B, double* x, int m, std::vector<char>& buffer );
+template int Ax_eq_b_QRLS<double>( double* A, double* B, double* x, int m, int n, std::vector<char>& buffer );
+template int Ax_eq_b_Chol<double>( double* A, double* B, double* x, int m, std::vector<char>& buffer );
+template int Ax_eq_b_LU<double>( double* A, double* B, double* x, int m, std::vector<char>& buffer );
+template int Ax_eq_b_SVD<double>( double* A, double* B, double* x, int m, std::vector<char>& buffer );
+template int Ax_eq_b_BK<double>( double* A, double* B, double* x, int m, std::vector<char>& buffer );
+#else // LMPP_HAVE_LAPACK -- No LAPACK !
+template int Ax_eq_b_LU_noLapack<double>( double* A, double* B, double* x, int m, std::vector<char>& buffer )
+#endif // LMPP_HAVE_LAPACK
+#endif // LMPP_DBL_PREC
+
+#ifdef LMPP_SNGL_PREC
+#ifdef LMPP_HAVE_LAPACK
+template int Ax_eq_b_QR<float>( float* A, float* B, float* x, int m, std::vector<char>& buffer );
+template int Ax_eq_b_QRLS<float>( float* A, float* B, float* x, int m, int n, std::vector<char>& buffer );
+template int Ax_eq_b_Chol<float>( float* A, float* B, float* x, int m, std::vector<char>& buffer );
+template int Ax_eq_b_LU<float>( float* A, float* B, float* x, int m, std::vector<char>& buffer );
+template int Ax_eq_b_SVD<float>( float* A, float* B, float* x, int m, std::vector<char>& buffer );
+template int Ax_eq_b_BK<float>( float* A, float* B, float* x, int m, std::vector<char>& buffer );
+#else // LMPP_HAVE_LAPACK -- No LAPACK !
+template int Ax_eq_b_LU_noLapack<float>( float* A, float* B, float* x, int m, std::vector<char>& buffer );
+#endif // LMPP_HAVE_LAPACK
+#endif // LMPP_SNGL_PREC
